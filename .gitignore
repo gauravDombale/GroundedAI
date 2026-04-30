@@ -1,0 +1,67 @@
+# Production RAG Application — Git Ignore
+# =============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+.uv/
+uv.lock
+*.pyc
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+pytest-results.xml
+
+# Evaluation reports
+evaluation/report.json
+eval_report.json
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/npm-debug.log*
+
+# Docker
+infra/grafana/provisioning/dashboards/
+
+# macOS
+.DS_Store
+*.DS_Store
+
+# Data / uploads
+sample_docs/
+*.pdf
+*.log
+
+# Secrets
+*.pem
+*.key
+*.crt

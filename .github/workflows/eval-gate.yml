@@ -1,0 +1,89 @@
+name: Evaluation Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "ingestion/**"
+      - "evaluation/**"
+
+jobs:
+  eval-gate:
+    name: RAGAS Evaluation Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install evaluation dependencies
+        run: uv sync --package rag-evaluation
+
+      - name: Run RAGAS evaluation
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          EVAL_FAITHFULNESS_THRESHOLD: "0.85"
+          EVAL_RELEVANCE_THRESHOLD: "0.80"
+          BACKEND_URL: ${{ secrets.EVAL_BACKEND_URL || 'http://localhost:8000' }}
+        run: |
+          cd evaluation
+          uv run python eval.py \
+            --dataset dataset/sample_eval.jsonl \
+            --output ../eval_report.json
+        # Exit code 1 from eval.py causes this step to fail, blocking the PR merge.
+
+      - name: Upload evaluation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-report
+          path: eval_report.json
+
+      - name: Comment evaluation results on PR
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('eval_report.json', 'utf8'));
+            } catch (e) {
+              console.log('Could not read eval report:', e);
+              return;
+            }
+
+            const metrics = report.metrics || {};
+            const thresholds = { faithfulness: 0.85, answer_relevancy: 0.80, context_recall: 0.70 };
+
+            let table = '| Metric | Score | Threshold | Status |\n|---|---|---|---|\n';
+            let allPass = true;
+            for (const [metric, score] of Object.entries(metrics)) {
+              const threshold = thresholds[metric] || 0;
+              const pass = score >= threshold;
+              if (!pass) allPass = false;
+              table += `| ${metric} | ${score.toFixed(4)} | ${threshold.toFixed(2)} | ${pass ? '✅ PASS' : '❌ FAIL'} |\n`;
+            }
+
+            const summary = allPass
+              ? '✅ **All evaluation metrics above threshold — safe to merge.**'
+              : '❌ **One or more evaluation metrics below threshold — merge blocked.**';
+
+            const body = `## 📊 RAGAS Evaluation Report\n\n${table}\n${summary}`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });

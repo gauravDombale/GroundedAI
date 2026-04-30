@@ -1,0 +1,18 @@
+[project]
+name = "rag-evaluation"
+version = "0.1.0"
+description = "Evaluation pipeline — RAGAS metrics, CI quality gate"
+requires-python = ">=3.12"
+dependencies = [
+  "ragas==0.4.3",
+  "datasets==3.6.0",
+  "openai>=1.77.0",
+  "langchain-openai>=0.3.16",
+  "click==8.2.1",
+  "rich==14.0.0",
+  "python-dotenv==1.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
