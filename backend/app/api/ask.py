@@ -90,10 +90,21 @@ async def ask(request: AskRequest) -> AskResponse:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {exc}") from exc
 
     latency_ms = int((time.perf_counter() - start) * 1000)
+    
+    # Map citations back to actual filenames
+    real_citations = []
+    for i, chunk in enumerate(reranked):
+        doc_id = f"doc{i + 1}"
+        if doc_id in validated.citations:
+            real_citations.append(chunk.metadata.get("filename", "unknown"))
+            
+    # Remove duplicates while preserving order
+    real_citations = list(dict.fromkeys(real_citations))
+    
     logger.info(
         "ask.ok",
         query=request.query[:80],
-        citations=validated.citations,
+        citations=real_citations,
         latency_ms=latency_ms,
     )
 
@@ -101,7 +112,7 @@ async def ask(request: AskRequest) -> AskResponse:
         query=request.query,
         rewritten_query=rewritten,
         answer=validated.answer,
-        citations=validated.citations,
+        citations=real_citations,
         latency_ms=latency_ms,
     )
 
