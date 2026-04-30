@@ -2,7 +2,6 @@
 Unit tests for citation validation logic.
 These tests run without any external services.
 """
-import pytest
 
 from app.generation.citation_validator import (
     extract_inline_citations,

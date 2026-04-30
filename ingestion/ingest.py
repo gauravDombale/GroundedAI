@@ -16,6 +16,7 @@ import asyncpg
 import click
 import structlog
 from dotenv import load_dotenv
+from elasticsearch import AsyncElasticsearch
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import Distance, VectorParams
 from rich.console import Console
@@ -31,6 +32,7 @@ from storage import (
     insert_document,
     sha256_file,
     upload_to_s3,
+    upsert_to_elasticsearch,
     upsert_to_qdrant,
 )
 
@@ -58,6 +60,7 @@ async def ingest_file(
     file_path: Path,
     pg_pool: asyncpg.Pool,
     qdrant: AsyncQdrantClient,
+    es_client: AsyncElasticsearch,
     settings: dict,
 ) -> None:
     """Full ingestion pipeline for a single file."""
@@ -101,6 +104,9 @@ async def ingest_file(
     # 6. Upsert vectors to Qdrant
     await upsert_to_qdrant(qdrant, settings["QDRANT_COLLECTION"], chunk_ids, embedded)
 
+    # 7. Upsert chunks to Elasticsearch (BM25)
+    await upsert_to_elasticsearch(es_client, settings["ELASTICSEARCH_INDEX"], chunk_ids, embedded)
+
     logger.info(
         "ingest.file.done",
         path=str(file_path),
@@ -123,6 +129,7 @@ async def run_ingestion(folder: Path, settings: dict) -> None:
         host=settings["QDRANT_HOST"],
         port=int(settings["QDRANT_PORT"]),
     )
+    es_client = AsyncElasticsearch(settings["ELASTICSEARCH_URL"])
 
     # Ensure Qdrant collection exists
     collections = await qdrant.get_collections()
@@ -130,6 +137,25 @@ async def run_ingestion(folder: Path, settings: dict) -> None:
         await qdrant.create_collection(
             collection_name=settings["QDRANT_COLLECTION"],
             vectors_config=VectorParams(size=3072, distance=Distance.COSINE),
+        )
+
+    # Ensure Elasticsearch index exists
+    if not await es_client.indices.exists(index=settings["ELASTICSEARCH_INDEX"]):
+        await es_client.indices.create(
+            index=settings["ELASTICSEARCH_INDEX"],
+            body={
+                "settings": {"similarity": {"default": {"type": "BM25"}}},
+                "mappings": {
+                    "properties": {
+                        "chunk_id": {"type": "keyword"},
+                        "document_id": {"type": "keyword"},
+                        "text": {"type": "text", "analyzer": "english"},
+                        "filename": {"type": "keyword"},
+                        "page_number": {"type": "integer"},
+                        "section_title": {"type": "text"},
+                    }
+                },
+            },
         )
 
     errors: list[str] = []
@@ -144,7 +170,7 @@ async def run_ingestion(folder: Path, settings: dict) -> None:
         for file_path in files:
             progress.update(task, description=f"[cyan]{file_path.name}[/cyan]")
             try:
-                await ingest_file(file_path, pg_pool, qdrant, settings)
+                await ingest_file(file_path, pg_pool, qdrant, es_client, settings)
             except Exception as exc:
                 logger.error("ingest.file.error", path=str(file_path), error=str(exc))
                 errors.append(f"{file_path.name}: {exc}")
@@ -152,6 +178,7 @@ async def run_ingestion(folder: Path, settings: dict) -> None:
 
     await pg_pool.close()
     await qdrant.close()
+    await es_client.close()
 
     if errors:
         console.print(f"\n[red]Completed with {len(errors)} error(s):[/red]")
@@ -177,6 +204,8 @@ def main(folder: Path) -> None:
         "QDRANT_HOST": os.environ.get("QDRANT_HOST", "localhost"),
         "QDRANT_PORT": os.environ.get("QDRANT_PORT", "6333"),
         "QDRANT_COLLECTION": os.environ.get("QDRANT_COLLECTION", "rag_documents"),
+        "ELASTICSEARCH_URL": os.environ.get("ELASTICSEARCH_URL", "http://localhost:9200"),
+        "ELASTICSEARCH_INDEX": os.environ.get("ELASTICSEARCH_INDEX", "rag_bm25"),
         "S3_ENDPOINT_URL": os.environ.get("S3_ENDPOINT_URL", "http://localhost:9000"),
         "S3_ACCESS_KEY": os.environ.get("S3_ACCESS_KEY", "minioadmin"),
         "S3_SECRET_KEY": os.environ.get("S3_SECRET_KEY", "minioadmin"),

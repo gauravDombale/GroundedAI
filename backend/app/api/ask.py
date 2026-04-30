@@ -8,7 +8,7 @@ import structlog
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.cache.redis_cache import cached_ask, cache_ask_result
+from app.cache.redis_cache import cache_ask_result, cached_ask
 from app.generation.citation_validator import enforce_citations
 from app.generation.llm import call_llm
 from app.generation.prompt import build_prompt

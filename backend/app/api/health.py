@@ -23,10 +23,11 @@ async def readiness() -> dict[str, Any]:
     Checks downstream dependency connectivity.
     Returns 200 only if Qdrant, Elasticsearch, Postgres, and Redis are reachable.
     """
-    from app.core.config import get_settings
-    from qdrant_client import AsyncQdrantClient
-    from elasticsearch import AsyncElasticsearch
     import redis.asyncio as aioredis
+    from elasticsearch import AsyncElasticsearch
+    from qdrant_client import AsyncQdrantClient
+
+    from app.core.config import get_settings
 
     settings = get_settings()
     checks: dict[str, str] = {}

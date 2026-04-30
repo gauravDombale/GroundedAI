@@ -11,6 +11,8 @@ import asyncpg
 import boto3
 import structlog
 from botocore.exceptions import ClientError
+from elasticsearch import AsyncElasticsearch
+from elasticsearch.helpers import async_bulk
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import PointStruct
 
@@ -137,3 +139,32 @@ async def upsert_to_qdrant(
 
     await client.upsert(collection_name=collection, points=points)
     logger.info("qdrant.upserted", collection=collection, count=len(points))
+
+
+# ─── Elasticsearch ────────────────────────────────────────────────────────────
+
+async def upsert_to_elasticsearch(
+    es_client: AsyncElasticsearch,
+    index_name: str,
+    chunk_ids: list[str],
+    embedded_chunks: list[dict[str, Any]],
+) -> None:
+    """Upsert text chunks into Elasticsearch BM25 index."""
+
+    async def generate_actions():
+        for chunk_id, chunk in zip(chunk_ids, embedded_chunks):
+            yield {
+                "_op_type": "index",
+                "_index": index_name,
+                "_id": chunk_id,
+                "chunk_id": chunk_id,
+                "document_id": chunk["document_id"],
+                "text": chunk["text"],
+                "filename": chunk.get("filename", ""),
+                "page_number": chunk.get("page_number"),
+                "section_title": chunk.get("section_title"),
+            }
+
+    await async_bulk(es_client, generate_actions())
+    logger.info("elasticsearch.upserted", index=index_name, count=len(chunk_ids))
+

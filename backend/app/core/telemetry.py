@@ -27,6 +27,7 @@ def setup_telemetry() -> None:
 
     structlog.configure(
         processors=[
+            structlog.stdlib.filter_by_level,
             structlog.contextvars.merge_contextvars,
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
@@ -35,9 +36,9 @@ def setup_telemetry() -> None:
             if settings.app_env == "development"
             else structlog.processors.JSONRenderer(),
         ],
-        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
     )
 
     # ── OpenTelemetry ─────────────────────────────────────────────────────────

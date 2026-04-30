@@ -1,7 +1,6 @@
 """Unit tests for the prompt builder."""
-import pytest
 
-from app.generation.prompt import build_prompt, PromptBundle
+from app.generation.prompt import PromptBundle, build_prompt
 from app.retrieval.bm25_retriever import RetrievedChunk
 
 

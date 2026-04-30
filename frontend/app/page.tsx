@@ -32,13 +32,13 @@ export default function Home() {
     if (!query.trim() || isLoading) return;
 
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: Date.now().toString() + "-user",
       role: "user",
       content: query,
     };
 
     const loadingMsg: Message = {
-      id: crypto.randomUUID(),
+      id: Date.now().toString() + "-assistant",
       role: "assistant",
       content: "",
       isLoading: true,

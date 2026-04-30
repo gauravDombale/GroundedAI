@@ -7,9 +7,9 @@ import structlog
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.reranking.cross_encoder import rerank
 from app.retrieval.fusion import hybrid_retrieve
 from app.retrieval.query_rewriter import rewrite_query
-from app.reranking.cross_encoder import rerank
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()

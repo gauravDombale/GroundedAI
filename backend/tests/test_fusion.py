@@ -1,5 +1,4 @@
 """Unit tests for RRF fusion logic."""
-import pytest
 
 from app.retrieval.bm25_retriever import RetrievedChunk
 from app.retrieval.fusion import reciprocal_rank_fusion

@@ -2,12 +2,11 @@
 Vector retriever backed by Qdrant 1.17.x.
 Uses OpenAI text-embedding-3-large (3072-dim) for query embedding.
 """
-from typing import Any
 
 import structlog
 from openai import AsyncOpenAI
 from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import Distance, VectorParams, ScoredPoint
+from qdrant_client.models import Distance, ScoredPoint, VectorParams
 
 from app.core.config import get_settings
 from app.retrieval.bm25_retriever import RetrievedChunk

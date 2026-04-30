@@ -2,8 +2,8 @@
 FastAPI application factory with full lifespan management.
 Mounts all routers and configures middleware, metrics, and tracing.
 """
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 import structlog
 from fastapi import FastAPI
@@ -23,9 +23,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     logger.info("app.starting", env=settings.app_env)
 
-    # Initialize telemetry first
-    setup_telemetry()
-    instrument_app(app)
+    # Ensure databases are initialized
+    from app.retrieval.bm25_retriever import get_bm25_retriever
+    from app.retrieval.vector_retriever import get_vector_retriever
+    await get_bm25_retriever().ensure_index()
+    await get_vector_retriever().ensure_collection()
 
     # Warm up reranker model (downloads on first run)
     from app.reranking.cross_encoder import get_reranker
@@ -39,6 +41,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+
+    # Initialize telemetry first
+    setup_telemetry()
 
     app = FastAPI(
         title="Production RAG — Ask My Docs",
@@ -55,7 +60,7 @@ def create_app() -> FastAPI:
     # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:3000"],
+        allow_origin_regex=".*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -63,6 +68,9 @@ def create_app() -> FastAPI:
 
     # ── Prometheus metrics ────────────────────────────────────────────────────
     Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+
+    # ── OpenTelemetry Instrumentation ─────────────────────────────────────────
+    instrument_app(app)
 
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(health.router, tags=["Health"])
