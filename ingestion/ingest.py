@@ -200,7 +200,7 @@ def main(folder: Path) -> None:
     """
     settings = {
         "OPENAI_API_KEY": os.environ["OPENAI_API_KEY"],
-        "DATABASE_URL": os.environ.get("DATABASE_URL", "postgresql://raguser:ragpass@localhost:5432/ragdb"),
+        "DATABASE_URL": os.environ.get("DATABASE_URL", "postgresql://raguser:ragpass@localhost:5432/ragdb").replace("+asyncpg", ""),
         "QDRANT_HOST": os.environ.get("QDRANT_HOST", "localhost"),
         "QDRANT_PORT": os.environ.get("QDRANT_PORT", "6333"),
         "QDRANT_COLLECTION": os.environ.get("QDRANT_COLLECTION", "rag_documents"),

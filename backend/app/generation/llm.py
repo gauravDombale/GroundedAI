@@ -45,6 +45,7 @@ async def call_llm(prompt: PromptBundle) -> LLMResponse:
 
     response = await acompletion(
         model=settings.litellm_model,
+        api_key=settings.openai_api_key,
         messages=[
             {"role": "system", "content": prompt.system},
             {"role": "user", "content": prompt.user},

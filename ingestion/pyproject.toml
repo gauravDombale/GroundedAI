@@ -5,7 +5,7 @@ description = "Document ingestion pipeline — loaders, chunking, embeddings, st
 requires-python = ">=3.12"
 dependencies = [
   # Document processing
-  "unstructured[pdf,html,md]==0.16.19",
+  "unstructured[pdf,html,md]>=0.16.19",
   "python-magic==0.4.27",
   # Chunking + embeddings
   "llama-index==0.14.21",
