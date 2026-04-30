@@ -39,13 +39,19 @@ graph TD
 
 ## 🚀 Getting Started
 
-### 1. Start Infrastructure
-Boot up the core databases and observability stack using Docker Compose.
+### 1. Start Infrastructure (Docker)
+This project heavily relies on Docker to orchestrate its data and observability layers. Boot up the core databases using Docker Compose:
 ```bash
 cd infra
 docker compose up -d
 ```
-*This starts PostgreSQL, Qdrant, Elasticsearch, Redis, MinIO, Prometheus, and Grafana.*
+This will start the following containers:
+- **`rag_postgres`**: Relational metadata storage (Port `5432`).
+- **`rag_qdrant`**: Dense vector embedding storage (Port `6333`).
+- **`rag_elasticsearch`**: Sparse BM25 keyword index (Port `9200`).
+- **`rag_redis`**: Low-latency caching layer (Port `6379`).
+- **`rag_minio`**: S3-compatible raw file storage (Port `9000`).
+- **`rag_prometheus` & `rag_grafana`**: Metrics and dashboards (Port `3002`).
 
 ### 2. Configure Environment
 Copy `.env.example` to `.env` in the root folder and add your OpenAI API key.
@@ -63,6 +69,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+> **Tip:** Once the backend is running, you can view the fully interactive API documentation (Swagger UI) by navigating to [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ### 4. Run the Frontend
 Start the Next.js development server.
@@ -83,6 +90,9 @@ python ingest.py /path/to/your/documents/folder
 
 ### 6. Search
 Open your browser to `http://localhost:3000` and start asking questions!
+
+## 🧪 CI / CD Evaluation Pipeline
+This project is built with CI-gated deployment in mind. The `.env` file exposes strict thresholds (e.g., `EVAL_FAITHFULNESS_THRESHOLD=0.85` and `EVAL_RELEVANCE_THRESHOLD=0.80`). In a production setting, automated tests use RAGAS metrics to score the LLM's responses against ground truth data, automatically failing the build if accuracy degrades below these limits.
 
 ## ⚖️ Tradeoffs & Design Decisions
 
